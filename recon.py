@@ -2,26 +2,24 @@
 Recon & Scanning Module (Suhail's Team Part)
 --------------------------------------------
 Safe, modular reconnaissance library for the "AutoPwn Web" project.
-
-Functions (import these in your app/UI):
-- feroxbuster_scan(base_url, wordlist=None, threads=50, extensions=None, timeout=900)
-- crtsh_subdomains(domain, timeout=20)
-- nmap_scan(target, args="-sV -T4", timeout=None)
-- http_fingerprint(url, timeout=10)
-- run_all_recon(target, prefer_https=False, ferox_opts=None, nmap_args="-sV -T4")
-
-Notes:
-- This module does NOT perform exploitation.
-- Use only on systems you own or have explicit written permission to test.
+Includes real-time logging for terminal feedback.
 """
 
 from typing import List, Dict, Any, Optional
 import subprocess
 import requests
 import re
-import json
+import logging
 from bs4 import BeautifulSoup
-import nmap
+import nmap  # Requires 'pip install python-nmap' AND Nmap installed on OS
+
+# --- Logging Configuration ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S"
+)
+logger = logging.getLogger("ReconModule")
 
 def _run_cmd(cmd: list, timeout: Optional[int] = None) -> Dict[str, Any]:
     try:
@@ -33,79 +31,62 @@ def _run_cmd(cmd: list, timeout: Optional[int] = None) -> Dict[str, Any]:
         return {"stdout": "", "stderr": f"Not found: {e}", "rc": 127}
 
 
+def nikto_scan(url: str, timeout: int = 600) -> List[str]:
+    """Call Nikto to find server misconfigurations and outdated software."""
+    logger.info(f"Starting Nikto scan on {url}...")
+    
+    # -h: host, -Tuning: 123c (Interesting files, config, web ports), -nointeractive
+    cmd = ["nikto", "-h", url, "-Tuning", "123c", "-nointeractive"]
+    
+    # Simple SSL logic for Nikto
+    if url.startswith("https"):
+        cmd.append("-ssl")
+    else:
+        cmd.append("-nossl")
+
+    res = _run_cmd(cmd, timeout=timeout)
+    findings = []
+    
+    for line in res.get("stdout", "").splitlines():
+        line = line.strip()
+        if line.startswith("+"):
+            findings.append(line.lstrip("+ ").strip())
+            
+    logger.info(f"Nikto scan complete. Found {len(findings)} items.")
+    return findings
+
+
 def feroxbuster_scan(base_url: str, wordlist: Optional[str] = None, threads: int = 50,
                      extensions: Optional[List[str]] = None, timeout: int = 900) -> List[Dict[str, Any]]:
-    """
-    Call feroxbuster to brute-force directories/files.
-    Returns list of findings: [{status, meth, url, path, length}, ...]
-    """
+    logger.info(f"Starting Feroxbuster directory discovery on {base_url}...")
     cmd = ["feroxbuster", "-u", base_url, "-q", "--no-color", "-t", str(threads)]
     if wordlist:
         cmd += ["-w", wordlist]
     if extensions:
         cmd += ["-x", ",".join(extensions)]
+        
     res = _run_cmd(cmd, timeout=timeout)
-
     findings = []
     line_re = re.compile(r"^\s*(\d{3})\s+([A-Z]+)\s+[\d\w]+\w*\s+\S+\s+\S+\s+(.*)$")
-    # Common format: "200        GET    11l     1w      12K  http://host/path"
+    
     for line in res.get("stdout", "").splitlines():
         m = line_re.match(line.strip())
         if m:
-            status = int(m.group(1))
-            method = m.group(2)
-            url = m.group(3).strip()
-            path = "/"
-            try:
-                # extract path from URL if present
-                from urllib.parse import urlparse
-                path = urlparse(url).path or "/"
-            except Exception:
-                pass
-            findings.append({"status": status, "method": method, "url": url, "path": path})
-        else:
-            # Fallback: if a line ends with a path-like token
-            if "http://" in line or "https://" in line:
-                url = line.strip().split()[-1]
-                try:
-                    from urllib.parse import urlparse
-                    p = urlparse(url)
-                    path = p.path or "/"
-                except Exception:
-                    path = "/"
-                findings.append({"status": None, "method": None, "url": url, "path": path})
+            findings.append({
+                "status": int(m.group(1)),
+                "method": m.group(2),
+                "url": m.group(3).strip()
+            })
+            
+    logger.info(f"Feroxbuster complete. Discovered {len(findings)} paths.")
     return findings
 
 
-def crtsh_subdomains(domain: str, timeout: int = 20) -> List[str]:
-    """
-    Enumerate subdomains via crt.sh (best-effort).
-    """
-    url = f"https://crt.sh/?q=%25.{domain}&output=json"
-    try:
-        r = requests.get(url, timeout=timeout)
-        r.raise_for_status()
-        subs = set()
-        for rec in r.json():
-            name = rec.get("name_value")
-            if not name:
-                continue
-            for n in str(name).split("\\n"):
-                n = n.strip()
-                if n and "*" not in n:
-                    subs.add(n.lower())
-        return sorted(subs)
-    except Exception:
-        return []
-
-
 def nmap_scan(target: str, args: str = "-sV -T4", timeout: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Run nmap using python-nmap and return a simple JSON-like dict.
-    """
+    logger.info(f"Starting Nmap service detection on {target}...")
     nm = nmap.PortScanner()
-    # python-nmap doesn't expose timeout here; use args responsibly.
     nm.scan(targets=target, arguments=args)
+    
     out: Dict[str, Any] = {}
     for host in nm.all_hosts():
         out[host] = {"status": nm[host].state(), "protocols": {}}
@@ -113,88 +94,88 @@ def nmap_scan(target: str, args: str = "-sV -T4", timeout: Optional[int] = None)
             out[host]["protocols"][proto] = {}
             for port in nm[host][proto].keys():
                 out[host]["protocols"][proto][port] = nm[host][proto][port]
+                
+    logger.info(f"Nmap scan complete for {target}.")
     return out
 
 
 def http_fingerprint(url: str, timeout: int = 10) -> Dict[str, Any]:
-    """
-    Fetch one URL and extract headers + <title>.
-    """
+    logger.info(f"Fingerprinting HTTP headers for {url}...")
     try:
         r = requests.get(url, timeout=timeout, allow_redirects=True)
-        headers = dict(r.headers)
-        server = headers.get("Server", "")
-        powered_by = headers.get("X-Powered-By", "")
-        title = ""
-        try:
-            soup = BeautifulSoup(r.text, "html.parser")
-            if soup.title and soup.title.string:
-                title = soup.title.string.strip()
-        except Exception:
-            pass
-        return {
+        soup = BeautifulSoup(r.text, "html.parser")
+        title = soup.title.string.strip() if soup.title else "No Title"
+        
+        data = {
             "final_url": r.url,
             "status_code": r.status_code,
-            "server": server,
-            "powered_by": powered_by,
+            "server": r.headers.get("Server", "Unknown"),
             "title": title,
-            "headers": headers,
+            "headers": dict(r.headers),
         }
+        logger.info(f"Fingerprint successful: {data['server']} | {title}")
+        return data
     except Exception as e:
+        logger.error(f"Fingerprint failed: {e}")
         return {"error": str(e)}
 
 
 def _guess_base_url(host: str, prefer_https: bool = False) -> str:
-    scheme = "https" if prefer_https else "http"
-    if host.startswith("http://") or host.startswith("https://"):
+    if host.startswith(("http://", "https://")):
         return host
-    return f"{scheme}://{host}"
+    return f"{'https' if prefer_https else 'http'}://{host}"
 
 
 def run_all_recon(target: str,
-                  prefer_https: bool = False,
-                  ferox_opts: Optional[Dict[str, Any]] = None,
-                  nmap_args: str = "-sV -T4") -> Dict[str, Any]:
+                 prefer_https: bool = False,
+                 ferox_opts: Optional[Dict[str, Any]] = None,
+                 nmap_args: str = "-sV -T4") -> Dict[str, Any]:
     """
-    High-level: perform HTTP fingerprint, nmap scan, feroxbuster dir enum.
-    Returns a dict that other team members can feed into vuln-analysis.
+    Unified entry point for the Web Reconnaissance module.
     """
+    logger.info(f"--- Starting Full Recon Project: {target} ---")
     ferox_opts = ferox_opts or {}
     base_url = _guess_base_url(target, prefer_https=prefer_https)
 
-    # HTTP fingerprint
+    # 1. Basic Fingerprint
     http_info = http_fingerprint(base_url)
 
-    # Nmap services
-    nm = nmap_scan(target, args=nmap_args)
+    # 2. Port Scanning
+    nm_data = nmap_scan(target, args=nmap_args)
 
-    # Directory brute force (only if HTTP seems reachable)
+    # If the web server is up, run deep web tools
+    nikto_findings = []
     paths = []
-    if not http_info.get("error"):
-        paths = feroxbuster_scan(base_url,
-                                 wordlist=ferox_opts.get("wordlist"),
-                                 threads=ferox_opts.get("threads", 50),
-                                 extensions=ferox_opts.get("extensions"),
-                                 timeout=ferox_opts.get("timeout", 900))
+    
+    if "error" not in http_info:
+        # 3. Web Vulnerability/Config Scanning (Nikto)
+        nikto_findings = nikto_scan(base_url)
 
-    # Build service list for the vuln team
+        # 4. Directory Brute Forcing (Feroxbuster)
+        paths = feroxbuster_scan(base_url, **ferox_opts)
+    else:
+        logger.warning("Target HTTP appears down. Skipping Nikto and Feroxbuster.")
+
+    # Build structured services for the Vuln Team
     services = []
-    for host, info in nm.items():
+    for host, info in nm_data.items():
         for proto, ports in info.get("protocols", {}).items():
             for port, pinfo in ports.items():
-                svc = pinfo.get("product") or pinfo.get("name", "")
-                ver = pinfo.get("version", "")
-                if svc:
-                    services.append({"service": svc.strip(), "version": ver.strip(), "port": port, "proto": proto})
+                services.append({
+                    "service": (pinfo.get("product") or pinfo.get("name", "")).strip(),
+                    "version": pinfo.get("version", "").strip(),
+                    "port": port,
+                    "proto": proto
+                })
 
+    logger.info(f"--- Recon Project for {target} Completed ---")
     return {
         "target": target,
         "base_url": base_url,
         "http": http_info,
-        "nmap": nm,
+        "nmap": nm_data,
         "services": services,
         "paths": paths,
-        "meta": {
-            "notes": "Use only with authorization. Exploitation is out of scope for this module."
-        }
+        "nikto": nikto_findings,
+        "meta": {"notes": "Authorization required."}
     }
