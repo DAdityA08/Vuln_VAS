@@ -11,7 +11,8 @@ import requests
 import re
 import logging
 from bs4 import BeautifulSoup
-import nmap  # Requires 'pip install python-nmap' AND Nmap installed on OS
+import nmap  
+import json
 
 # --- Logging Configuration ---
 logging.basicConfig(
@@ -85,8 +86,8 @@ def feroxbuster_scan(base_url: str, wordlist: Optional[str] = None, threads: int
 def nmap_scan(target: str, args: str = "-sV -T4", timeout: Optional[int] = None) -> Dict[str, Any]:
     logger.info(f"Starting Nmap service detection on {target}...")
     nm = nmap.PortScanner()
-    nm.scan(targets=target, arguments=args)
-    
+    nm.scan(target, args)
+
     out: Dict[str, Any] = {}
     for host in nm.all_hosts():
         out[host] = {"status": nm[host].state(), "protocols": {}}
@@ -94,9 +95,10 @@ def nmap_scan(target: str, args: str = "-sV -T4", timeout: Optional[int] = None)
             out[host]["protocols"][proto] = {}
             for port in nm[host][proto].keys():
                 out[host]["protocols"][proto][port] = nm[host][proto][port]
-                
+
     logger.info(f"Nmap scan complete for {target}.")
     return out
+
 
 
 def http_fingerprint(url: str, timeout: int = 10) -> Dict[str, Any]:
@@ -179,3 +181,19 @@ def run_all_recon(target: str,
         "nikto": nikto_findings,
         "meta": {"notes": "Authorization required."}
     }
+
+if __name__ == "__main__":
+    target = input("Enter target domain or IP: ")
+    results = run_all_recon(
+    target = target,
+    prefer_https=False,
+    ferox_opts={
+    "threads":50,
+    "extensions":["php","html","js"]
+    }
+   )
+    
+    filename = f"recon_{target.replace('.','_')}.json"
+    with open(filename,"w") as f:
+         json.dump(results,f,indent=4)
+    print(f"\n[+] Recon Complete! Results saved to : {filename}")
