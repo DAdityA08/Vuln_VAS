@@ -1,0 +1,15 @@
+{
+    "target": "192.168.56.101",
+    "recon": {
+        "target": "192.168.56.101",
+        "http": {
+            "error": "HTTPConnectionPool(host='192.168.56.101', port=80): Max retries exceeded with url: / (Caused by ConnectTimeoutError(<HTTPConnection(host='192.168.56.101', port=80) at 0x7fd046531fd0>, 'Connection to 192.168.56.101 timed out. (connect timeout=10)'))"
+        },
+        "services": [],
+        "paths": [],
+        "nikto": [
+            "0 host(s) tested"
+        ]
+    },
+    "vulnerabilities": []
+}
