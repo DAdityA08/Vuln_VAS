@@ -1,0 +1,8 @@
+{
+    "target": "192.168.56.101",
+    "services": [
+        {"service": "vsftpd", "version": "2.3.4", "port": 21, "proto": "tcp"},
+        {"service": "OpenSSH", "version": "4.7p1", "port": 22, "proto": "tcp"},
+        {"service": "Apache httpd", "version": "2.4.54", "port": 80, "proto": "tcp"}
+    ]
+}

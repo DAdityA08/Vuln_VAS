@@ -1,3 +1,17 @@
-requests
-beautifulsoup4
-python-nmap
+# Vuln_VAS – Requirements
+# Install: pip install -r requirements.txt
+
+# Core
+requests>=2.31.0
+python-nmap>=0.7.1
+
+# Module 4 – Dashboard & Reporting
+streamlit>=1.35.0
+plotly>=5.20.0
+pandas>=2.2.0
+fpdf2>=2.7.9
+
+# Optional (already system tools)
+# nmap          → install via: sudo apt install nmap
+# feroxbuster   → install via: sudo apt install feroxbuster
+# searchsploit  → install via: sudo apt install exploitdb

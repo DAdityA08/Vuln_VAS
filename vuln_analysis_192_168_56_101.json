@@ -1,0 +1,102 @@
+{
+    "target": "192.168.56.101",
+    "scan_time": "2026-03-07T06:37:14.605030+00:00",
+    "total_services": 3,
+    "vulnerabilities": [
+        {
+            "service": "OpenSSH",
+            "version": "4.7p1",
+            "port": 22,
+            "proto": "tcp",
+            "cve": "CVE-1999-0661",
+            "all_cves": [
+                "CVE-1999-0661",
+                "CVE-2000-0525",
+                "CVE-2000-0535",
+                "CVE-2000-1169",
+                "CVE-2001-1459"
+            ],
+            "exploit_reference": "Exploit-DB 45210",
+            "exploits": [
+                {
+                    "title": "OpenSSH 2.3 < 7.7 - Username Enumeration (PoC)",
+                    "edb_path": "/usr/share/exploitdb/exploits/linux/remote/45210.py",
+                    "edb_id": "45210"
+                },
+                {
+                    "title": "OpenSSH 2.3 < 7.7 - Username Enumeration",
+                    "edb_path": "/usr/share/exploitdb/exploits/linux/remote/45233.py",
+                    "edb_id": "45233"
+                },
+                {
+                    "title": "OpenSSH < 6.6 SFTP (x64) - Command Execution",
+                    "edb_path": "/usr/share/exploitdb/exploits/linux_x86-64/remote/45000.c",
+                    "edb_id": "86"
+                }
+            ],
+            "cvss_score": 10.0,
+            "severity": "Critical",
+            "confidence": "High",
+            "description": "A system is running a version of software that was replaced with a Trojan Horse at one of its distribution points, such as (1) TCP Wrappers 7.6, (2) util-linux 2.9g, (3) wuarchive ftpd (wuftpd) 2.2 and 2.1f, (4) IRC client (ircII) ircII 2.2.9, (5) OpenSSH 3.4p1, or (6) Sendmail 8.12.6."
+        },
+        {
+            "service": "vsftpd",
+            "version": "2.3.4",
+            "port": 21,
+            "proto": "tcp",
+            "cve": "CVE-2003-0135",
+            "all_cves": [
+                "CVE-2003-0135",
+                "CVE-2004-0042",
+                "CVE-2004-2259",
+                "CVE-2005-4713",
+                "CVE-2007-4322"
+            ],
+            "exploit_reference": "Exploit-DB 17491",
+            "exploits": [
+                {
+                    "title": "vsftpd 2.3.4 - Backdoor Command Execution (Metasploit)",
+                    "edb_path": "/usr/share/exploitdb/exploits/unix/remote/17491.rb",
+                    "edb_id": "17491"
+                },
+                {
+                    "title": "vsftpd 2.3.4 - Backdoor Command Execution",
+                    "edb_path": "/usr/share/exploitdb/exploits/unix/remote/49757.py",
+                    "edb_id": "49757"
+                }
+            ],
+            "cvss_score": 7.5,
+            "severity": "High",
+            "confidence": "High",
+            "description": "vsftpd FTP daemon in Red Hat Linux 9 is not compiled against TCP wrappers (tcp_wrappers) but is installed as a standalone service, which inadvertently prevents vsftpd from restricting access as intended."
+        },
+        {
+            "service": "Apache httpd",
+            "version": "2.4.54",
+            "port": 80,
+            "proto": "tcp",
+            "cve": "CVE-1999-0236",
+            "all_cves": [
+                "CVE-1999-0236",
+                "CVE-1999-0071",
+                "CVE-2000-1206",
+                "CVE-2002-1850",
+                "CVE-2003-0249"
+            ],
+            "exploit_reference": "Exploit-DB 51012",
+            "exploits": [],
+            "cvss_score": 7.5,
+            "severity": "High",
+            "confidence": "Medium",
+            "description": "ScriptAlias directory in NCSA and Apache httpd allowed attackers to read CGI programs."
+        }
+    ],
+    "risk_summary": {
+        "critical": 1,
+        "high": 2,
+        "medium": 0,
+        "low": 0,
+        "unknown": 0,
+        "overall_risk_score": 80
+    }
+}
